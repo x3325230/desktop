@@ -7,7 +7,8 @@ import {
 } from './text-token-parser'
 import { assertNever } from './fatal-error'
 
-const MaxSummaryLength = 72
+export const MaxSummaryLength = 72
+export const IdealSummaryLength = 50
 
 /**
  * A method used to wrap long commit summaries and put any overflow
@@ -68,7 +69,10 @@ export function wrapRichTextCommitMessage(
         // complex for now.
         summary.push(text(token.text.substr(0, remainder)))
         overflow.push(text(token.text.substr(remainder)))
-      } else if (token.kind === TokenType.Emoji) {
+      } else if (
+        token.kind === TokenType.Emoji ||
+        token.kind === TokenType.UnicodeEmoji
+      ) {
         // Can't hard-wrap inside an emoji
         overflow.push(token)
       } else if (token.kind === TokenType.Link) {

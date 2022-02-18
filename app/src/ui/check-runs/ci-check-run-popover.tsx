@@ -19,6 +19,8 @@ import { encodePathAsUrl } from '../../lib/path'
 import { PopupType } from '../../models/popup'
 import * as OcticonSymbol from '../octicons/octicons.generated'
 import { Donut } from '../donut'
+import { supportsRerunningChecks } from '../../lib/endpoint-capabilities'
+import { getPullRequestCommitRef } from '../../models/pull-request'
 
 const BlankSlateImage = encodePathAsUrl(
   __dirname,
@@ -64,7 +66,7 @@ export class CICheckRunPopover extends React.PureComponent<
 
     const cachedStatus = this.props.dispatcher.tryGetCommitStatus(
       this.props.repository,
-      this.getCommitRef(this.props.prNumber)
+      getPullRequestCommitRef(this.props.prNumber)
     )
 
     this.state = {
@@ -78,7 +80,7 @@ export class CICheckRunPopover extends React.PureComponent<
   public componentDidMount() {
     const combinedCheck = this.props.dispatcher.tryGetCommitStatus(
       this.props.repository,
-      this.getCommitRef(this.props.prNumber),
+      getPullRequestCommitRef(this.props.prNumber),
       this.props.branchName
     )
 
@@ -95,7 +97,7 @@ export class CICheckRunPopover extends React.PureComponent<
 
     this.statusSubscription = this.props.dispatcher.subscribeToCommitStatus(
       this.props.repository,
-      this.getCommitRef(this.props.prNumber),
+      getPullRequestCommitRef(this.props.prNumber),
       this.onStatus,
       this.props.branchName
     )
@@ -157,10 +159,6 @@ export class CICheckRunPopover extends React.PureComponent<
     }
   }
 
-  private getCommitRef(prNumber: number): string {
-    return `refs/pull/${prNumber}/head`
-  }
-
   private getCombinedCheckSummary(
     combinedCheck: ICombinedRefCheck | null
   ): string {
@@ -198,13 +196,13 @@ export class CICheckRunPopover extends React.PureComponent<
       type: PopupType.CICheckRunRerun,
       checkRuns: this.state.checkRuns,
       repository: this.props.repository,
-      prRef: this.getCommitRef(this.props.prNumber),
+      prRef: getPullRequestCommitRef(this.props.prNumber),
     })
   }
 
   private getPopoverPositioningStyles = (): React.CSSProperties => {
     const top = this.props.badgeBottom + 10
-    return { top, maxHeight: `calc(100% - ${top + 10}px)` }
+    return { top }
   }
 
   private getListHeightStyles = (): React.CSSProperties => {
@@ -218,6 +216,10 @@ export class CICheckRunPopover extends React.PureComponent<
 
   private renderRerunButton = () => {
     const { checkRuns } = this.state
+    if (!supportsRerunningChecks(this.props.repository.endpoint)) {
+      return null
+    }
+
     return (
       <Button
         onClick={this.rerunChecks}
@@ -320,7 +322,7 @@ export class CICheckRunPopover extends React.PureComponent<
       )
 
     return (
-      <div className="ci-check-run-list-header">
+      <div className="ci-check-run-list-header" tabIndex={0}>
         <div className="completeness-indicator">
           {this.renderCompletenessIndicator(
             allSuccess,
@@ -352,7 +354,10 @@ export class CICheckRunPopover extends React.PureComponent<
     }
 
     return (
-      <div className="ci-check-run-list" style={this.getListHeightStyles()}>
+      <div
+        className="ci-check-run-list-container"
+        style={this.getListHeightStyles()}
+      >
         <CICheckRunList
           checkRuns={checkRuns}
           loadingActionLogs={loadingActionLogs}
